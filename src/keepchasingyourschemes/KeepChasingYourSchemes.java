@@ -1,13 +1,17 @@
 package keepchasingyourschemes;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 
 public class KeepChasingYourSchemes {
 
     static Scanner scanner = new Scanner(System.in);
-    static int[] idGlobus = new int[10];
-    static boolean[] estaVolant = new boolean[10];
-    static int[] trajectes = new int[10];
+    //Registre de globus. Clau = id del globus
+    static Map<Integer,Globus> registreDeGlobus = new HashMap<Integer,Globus>();
     
     static int compte = 10000; //Compte corrent
     
@@ -25,21 +29,83 @@ public class KeepChasingYourSchemes {
             
             switch(opcio) {
                 case construirGlobus: ConstruirGlobus(); break;
+                case ferViatge: FerViatge(); break;
             }
         }
     }
     
     static void ConstruirGlobus() {
+        Compra compra = new Compra("COMPRA D'UN GLOBUS");
         Ask("Vols comprar una cistella de napicols?");
         if(GetYesNo()) {
-            
+            compra.Afegir("Cistella de napicols", 1000);
+        } else return;
+        Ask("Vols comprar una bandera?");
+        if(GetYesNo()) {
+            compra.Afegir("Bandera", 1000);
+        } else return;
+        Ask("Vols comprar gomes?");
+        if(GetYesNo()) {
+            compra.Afegir("Gomes",1000);
+        } else return;
+        if(!GastarPasta(compra.Total()).ok) return; //Retirem els fons del nostre compte
+        System.out.println("S'està construint el globus...");
+        System.out.println("Globus construit!");
+        Ask("Quin serà el seu número identificatiu?");
+        int codiGlobus;
+        while(true) {
+            codiGlobus = GetNumber(0);
+            if(!registreDeGlobus.containsKey(codiGlobus)) break;
+            Error("Ja tenim un globus amb aquest identificador.");
         }
+        registreDeGlobus.put(codiGlobus, new Globus());
+        compra.ImprimirFactura();
+    }
+    static void FerViatge() {
+        if(GlobusDisponibles().size() <= 0) {
+            Error("No queden globus disponibles.");
+            return;
+        }
+        Ask("Quanta gent pujarà al globus?");
+        int gent = GetNumber(1,4);
+        Compra compra = new Compra("BITLLETS");
+        compra.Afegir(gent + (gent == 1 ? " bitllet." : "bitllets."), gent * 100);
+        if(!GastarPasta(compra.Total()).ok) return;
+        int globus = SeleccionarGlobus();
+        System.out.println("Es farà el viatge amb el globus N " + globus + ".");
+        Globus globusSeleccionat = registreDeGlobus.get(globus);
+        globusSeleccionat.deViatge = true;
+    }
+    
+    static int SeleccionarGlobus() {
+        List<Integer> claus = GlobusDisponibles();
+        for(int i = 1; i <= claus.size(); i++)
+            System.out.println("Globus " + claus.get(i-1));
+        Ask("Quin globus vols?");
+        return GetNumber(claus);
+    }
+    static List<Integer> GlobusDisponibles() {
+        Set<Integer> keys = registreDeGlobus.keySet();
+        List<Integer> availableKeys = new LinkedList<Integer>();
+        for(int key: keys) {
+            if(GlobusDisponible(key)) continue;
+            availableKeys.add(key);
+        }
+        return availableKeys;
+    }
+    static boolean GlobusDisponible(int key) {
+        return registreDeGlobus.get(key).deViatge;
     }
     
     static Flag GastarPasta(int diners) {
+        if(compte < diners) return new Flag(false,"No tens suficients diners!");
         
-    }
-    
+        compte -= diners;
+        //Transacció completada
+        System.out.println("S'han restat " + diners + "€ del teu compte.\nDiners restants: " + compte + "€");
+        return new Flag(true);
+    } 
+   
     static Opcions PrintMenu(String titol, OpcioMenu... opcions) {
         System.out.println(titol);
         for(int i = 0; i < opcions.length; i++) opcions[i].Print(i + 1);
@@ -59,10 +125,24 @@ public class KeepChasingYourSchemes {
             Error("Has d'introduir \"s\" o \"n\"");   
         }
     }
+    static int GetNumber(List<Integer> values) {
+        while(true) {
+            int valor = scanner.nextInt();
+            if(values.contains(valor)) return valor;
+            Error("Valor fora de rang.");
+        }
+    }
     static int GetNumber(int min, int max) {
         while(true) {
             int select = scanner.nextInt();
             if(select >= min && select <= max) return select;
+            Error("Valor fora de rang");
+        }
+    }
+    static int GetNumber(int min) {
+        while(true) {
+            int select = scanner.nextInt();
+            if(select >= min) return select;
             Error("Valor fora de rang");
         }
     }
@@ -80,12 +160,55 @@ public class KeepChasingYourSchemes {
         comprovar,
         sortir
     }
+    static class Globus {
+        public boolean deViatge = false;
+    }
+    static class Compra {
+        //$$$ Carrito de la compra $$$
+        private List<Element> compra = new LinkedList<Element>();
+        private String titol = "COMPRA";
+        
+        public Compra(String titol) {
+            this.titol = titol;
+        }
+        
+        public void Afegir(String nom, int preu) {
+            compra.add(new Element(nom,preu));
+        }
+        public void ImprimirFactura() {
+            System.out.println("[" + titol + "]");
+            for(Element element: compra) {
+                System.out.println("\n\t" + element.nom + ": " + element.preu + "€");
+            }
+            System.out.println("TOTAL: " + Total() + "€");
+        }
+        public int Total() {
+            int count = 0;
+            for(Element element: compra) count += element.preu;
+            return count;
+        }
+        
+        static class Element {
+            public int preu;
+            public String nom;
+            
+            public Element(String nom, int preu) {
+                this.nom = nom;
+                this.preu = preu;
+            }
+        }
+    }
     static class Flag {
         boolean ok;
         String error = "Error desconegut";
         
         public Flag(boolean ok) {
             this.ok = ok;
+        }
+        public Flag(boolean ok, String error) {
+            this.ok = ok;
+            this.error = error;
+            Error(error);
         }
     }
     static class OpcioMenu {
