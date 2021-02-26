@@ -1,14 +1,9 @@
 package keepchasingyourschemes;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 public class KeepChasingYourSchemes {
-
+    static Random random = new Random();
     static Scanner scanner = new Scanner(System.in);
     //Registre de globus. Clau = id del globus
     static Map<Integer,Globus> registreDeGlobus = new HashMap<Integer,Globus>();
@@ -19,9 +14,9 @@ public class KeepChasingYourSchemes {
         while(true) {
             Opcions opcio = PrintMenu("Menú principal",
                 new OpcioMenu("Construir un globus",Opcions.construirGlobus,true),
-                new OpcioMenu("Fer un viatge",Opcions.ferViatge,true),
-                new OpcioMenu("Fer tornar el globus",Opcions.tornarGlobus,true),
-                new OpcioMenu("Vendre un globus",Opcions.vendreGlobus,true),
+                new OpcioMenu("Fer un viatge",Opcions.ferViatge,GlobusDisponibles().size() > 0,"No hi han globus disponibles."),
+                new OpcioMenu("Fer tornar el globus",Opcions.tornarGlobus,GlobusVolant().size() > 0,"No hi han globus surcant el cel."),
+                new OpcioMenu("Vendre un globus",Opcions.vendreGlobus,GlobusDisponibles().size() > 0,"No queden globus disponibles."),
                 new OpcioMenu("Comprovar situació",Opcions.comprovar,true),
                 new OpcioMenu("Sortir",Opcions.sortir,true));
             
@@ -30,7 +25,12 @@ public class KeepChasingYourSchemes {
             switch(opcio) {
                 case construirGlobus: ConstruirGlobus(); break;
                 case ferViatge: FerViatge(); break;
+                case tornarGlobus: FerTornarGlobus(); break;
+                case vendreGlobus: VendreGlobus(); break;
+                case comprovar: ComprovarSituacio(); break;
             }
+
+            System.out.println("Final de programa");
         }
     }
     
@@ -49,6 +49,7 @@ public class KeepChasingYourSchemes {
             compra.Afegir("Gomes",1000);
         } else return;
         if(!GastarPasta(compra.Total()).ok) return; //Retirem els fons del nostre compte
+        compra.ImprimirFactura();
         System.out.println("S'està construint el globus...");
         System.out.println("Globus construit!");
         Ask("Quin serà el seu número identificatiu?");
@@ -58,29 +59,57 @@ public class KeepChasingYourSchemes {
             if(!registreDeGlobus.containsKey(codiGlobus)) break;
             Error("Ja tenim un globus amb aquest identificador.");
         }
-        registreDeGlobus.put(codiGlobus, new Globus());
-        compra.ImprimirFactura();
+        registreDeGlobus.put(codiGlobus, new Globus(codiGlobus));
     }
     static void FerViatge() {
-        if(GlobusDisponibles().size() <= 0) {
-            Error("No queden globus disponibles.");
-            return;
-        }
         Ask("Quanta gent pujarà al globus?");
         int gent = GetNumber(1,4);
         Compra compra = new Compra("BITLLETS");
         compra.Afegir(gent + (gent == 1 ? " bitllet." : "bitllets."), gent * 100);
-        if(!GastarPasta(compra.Total()).ok) return;
-        int globus = SeleccionarGlobus();
+        IngressarPasta(compra.Total()); //Ingressem els diners al compte
+        Integer globus = SeleccionarGlobus();
         System.out.println("Es farà el viatge amb el globus N " + globus + ".");
         Globus globusSeleccionat = registreDeGlobus.get(globus);
         globusSeleccionat.deViatge = true;
     }
-    
+    static void FerTornarGlobus() {
+        System.out.println("Globus viatjant:");
+        List<Integer> claus = new LinkedList<Integer>();
+        for(Integer id: registreDeGlobus.keySet()) {
+            Globus globus = registreDeGlobus.get(id);
+            if(globus.deViatge) {
+                System.out.println("\t|--> ID: " + id);
+                claus.add(id);
+            }
+        }
+        Ask("Quin globus vols fer tornar?");
+        int id = GetNumber(claus); //Escollim id entre les id disponibles
+        Globus globus = registreDeGlobus.get(id);
+        globus.AcabarViatge();
+    }
+    static void VendreGlobus() {
+        ImprimirFlota(true,true);
+        Ask("Quin globus vols vendre?");
+        int id = GetNumber(GlobusDisponibles());
+        Globus globus = registreDeGlobus.get(id);
+
+        //Procés de venta
+        int valorGlobus = random.nextInt(21) % 2 == 0 ? globus.viatges * 100 : globus.viatges * 1000;
+        System.out.println("S'ha venut el globus " + id + " per " + valorGlobus + "€.");
+        IngressarPasta(valorGlobus);
+    }
+    static void ComprovarSituacio() {
+        System.out.println("*** COMPROVAR SITUACIÓ ***");
+        ImprimirFlota(false,true);
+        System.out.println("Diners al compte: " + compte + "€\n");
+    }
+
     static int SeleccionarGlobus() {
         List<Integer> claus = GlobusDisponibles();
-        for(int i = 1; i <= claus.size(); i++)
-            System.out.println("Globus " + claus.get(i-1));
+        System.out.println("Globus disponibles:");
+        /*for(int i = 1; i <= claus.size(); i++)
+            System.out.println("Globus " + claus.get(i-1));*/
+        ImprimirFlota(true,false);
         Ask("Quin globus vols?");
         return GetNumber(claus);
     }
@@ -96,7 +125,12 @@ public class KeepChasingYourSchemes {
     static boolean GlobusDisponible(int key) {
         return registreDeGlobus.get(key).deViatge;
     }
-    
+    static List<Integer> GlobusVolant() {
+        List<Integer> claus = new LinkedList<Integer>();
+        for(Globus globus: registreDeGlobus.values()) if(globus.deViatge) claus.add(globus.id);
+        return claus;
+    }
+
     static Flag GastarPasta(int diners) {
         if(compte < diners) return new Flag(false,"No tens suficients diners!");
         
@@ -105,7 +139,10 @@ public class KeepChasingYourSchemes {
         System.out.println("S'han restat " + diners + "€ del teu compte.\nDiners restants: " + compte + "€");
         return new Flag(true);
     } 
-   
+    static void IngressarPasta(int diners) {
+        compte += diners;
+    }
+
     static Opcions PrintMenu(String titol, OpcioMenu... opcions) {
         System.out.println(titol);
         for(int i = 0; i < opcions.length; i++) opcions[i].Print(i + 1);
@@ -116,13 +153,22 @@ public class KeepChasingYourSchemes {
             else Error(opcions[op].textDeshabilitat);
         }
     }
-    
     static boolean GetYesNo() {
         while(true) {
             String response = scanner.next();
             if(response.toLowerCase().equals("s")) return true;
             if(response.toLowerCase().equals("n")) return false;
             Error("Has d'introduir \"s\" o \"n\"");   
+        }
+    }
+    static void ImprimirFlota(boolean amagarNoDisponibles, boolean mostrarViatges) {
+        System.out.println("FLOTA: " + registreDeGlobus.size() + " globus");
+        for(Integer id: registreDeGlobus.keySet()) {
+            Globus globus = registreDeGlobus.get(id);
+            if(amagarNoDisponibles && globus.deViatge) continue;
+            System.out.print("\t|--> ID: " + globus.id + " --- " + (globus.deViatge ? "[VIATJANT]" : "[DISPONIBLE]"));
+            if(mostrarViatges) System.out.print(" Viatges: " + globus.viatges);
+            System.out.println();
         }
     }
     static int GetNumber(List<Integer> values) {
@@ -152,7 +198,7 @@ public class KeepChasingYourSchemes {
     static void Ask(String text) {
         System.out.print("\n[?] " + text + " ");
     }
-    static enum Opcions {
+    enum Opcions {
         construirGlobus,
         ferViatge,
         tornarGlobus,
@@ -161,7 +207,24 @@ public class KeepChasingYourSchemes {
         sortir
     }
     static class Globus {
+        public int id;
         public boolean deViatge = false;
+        public int viatges = 0;
+
+        public Globus(int id) {
+            this.id = id;
+        }
+        public void AcabarViatge() {
+            viatges++;
+            deViatge = false;
+            System.out.println("El globus N " + id + " ha tornat del seu viatge N " + viatges + ".");
+
+            if(viatges >= 10) {
+                //Final de la vida del globus
+                System.out.println("La vida útil del globus N " + id + " ha arribat al final de la seva vida útil.");
+                registreDeGlobus.remove(id);
+            }
+        }
     }
     static class Compra {
         //$$$ Carrito de la compra $$$
@@ -176,11 +239,11 @@ public class KeepChasingYourSchemes {
             compra.add(new Element(nom,preu));
         }
         public void ImprimirFactura() {
-            System.out.println("[" + titol + "]");
+            System.out.print("[" + titol + "]");
             for(Element element: compra) {
-                System.out.println("\n\t" + element.nom + ": " + element.preu + "€");
+                System.out.print("\n\t|-->" + element.nom + ": " + element.preu + "€");
             }
-            System.out.println("TOTAL: " + Total() + "€");
+            System.out.println("\nTOTAL: " + Total() + "€\n");
         }
         public int Total() {
             int count = 0;
