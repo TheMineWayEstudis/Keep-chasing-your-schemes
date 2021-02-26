@@ -29,12 +29,12 @@ public class KeepChasingYourSchemes {
                 case vendreGlobus: VendreGlobus(); break;
                 case comprovar: ComprovarSituacio(); break;
             }
-
-            System.out.println("Final de programa");
         }
+        System.out.println("-- Final de programa --");
     }
     
     static void ConstruirGlobus() {
+        System.out.println("-- Ho has de comprar tot per poder construir el globus --");
         Compra compra = new Compra("COMPRA D'UN GLOBUS");
         Ask("Vols comprar una cistella de napicols?");
         if(GetYesNo()) {
@@ -88,6 +88,7 @@ public class KeepChasingYourSchemes {
         globus.AcabarViatge();
     }
     static void VendreGlobus() {
+        System.out.println("-- Nomès pots vendre globus que no estan viatjant --");
         ImprimirFlota(true,true);
         Ask("Quin globus vols vendre?");
         int id = GetNumber(GlobusDisponibles());
@@ -97,6 +98,7 @@ public class KeepChasingYourSchemes {
         int valorGlobus = random.nextInt(21) % 2 == 0 ? globus.viatges * 100 : globus.viatges * 1000;
         System.out.println("S'ha venut el globus " + id + " per " + valorGlobus + "€.");
         IngressarPasta(valorGlobus);
+        registreDeGlobus.remove(id); //Eliminar globus
     }
     static void ComprovarSituacio() {
         System.out.println("*** COMPROVAR SITUACIÓ ***");
@@ -146,8 +148,8 @@ public class KeepChasingYourSchemes {
     static Opcions PrintMenu(String titol, OpcioMenu... opcions) {
         System.out.println(titol);
         for(int i = 0; i < opcions.length; i++) opcions[i].Print(i + 1);
-        System.out.print("\nIntrodueix una opció: ");
         while(true) {
+            System.out.print("\nIntrodueix una opció: ");
             int op = GetNumber(1,opcions.length) - 1;
             if(opcions[op].habilitat) return opcions[op].opcio;
             else Error(opcions[op].textDeshabilitat);
@@ -156,9 +158,9 @@ public class KeepChasingYourSchemes {
     static boolean GetYesNo() {
         while(true) {
             String response = scanner.next();
-            if(response.toLowerCase().equals("s")) return true;
-            if(response.toLowerCase().equals("n")) return false;
-            Error("Has d'introduir \"s\" o \"n\"");   
+            if(response.toLowerCase().equals("s") || response.toLowerCase().equals("si")) return true;
+            if(response.toLowerCase().equals("n") || response.toLowerCase().equals("no")) return false;
+            Error("Has d'introduir \"si\" o \"no\"");
         }
     }
     static void ImprimirFlota(boolean amagarNoDisponibles, boolean mostrarViatges) {
@@ -221,7 +223,7 @@ public class KeepChasingYourSchemes {
 
             if(viatges >= 10) {
                 //Final de la vida del globus
-                System.out.println("La vida útil del globus N " + id + " ha arribat al final de la seva vida útil.");
+                System.out.println("La vida útil del globus N " + id + " ha arribat al seu final.");
                 registreDeGlobus.remove(id);
             }
         }
